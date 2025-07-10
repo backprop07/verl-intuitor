@@ -148,6 +148,10 @@ def entropy_from_logits(logits: torch.Tensor):
     entropy = torch.logsumexp(logits, dim=-1) - torch.sum(pd * logits, dim=-1)
     return entropy
 
+def self_certainty_from_logits(logits: torch.Tensor):
+    """Calculate self-certainty from logits."""
+    self_certainty = torch.logsumexp(logits, dim=-1) - logits.mean(dim=-1)
+    return self_certainty
 
 def entropy_from_logits_with_chunking(logits: torch.Tensor, chunk_size: int = 2048):
     """Memory-efficient entropy calculation with chunking."""
@@ -158,6 +162,15 @@ def entropy_from_logits_with_chunking(logits: torch.Tensor, chunk_size: int = 20
         entropy_chunk = torch.logsumexp(logits_chunk, dim=-1) - torch.sum(pd_chunk * logits_chunk, dim=-1)
         entropy[i : i + chunk_size] = entropy_chunk
     return entropy
+
+def self_certainty_from_logits_with_chunking(logits: torch.Tensor, chunk_size: int = 2048):
+    """Memory-efficient self-certainty calculation with chunking."""
+    self_certainty = torch.zeros(logits.shape[0], device=logits.device)
+    for i in range(0, logits.shape[0], chunk_size):
+        logits_chunk = logits[i : i + chunk_size].float()
+        self_certainty_chunk = torch.logsumexp(logits_chunk, dim=-1) - logits_chunk.mean(dim=-1)
+        self_certainty[i : i + chunk_size] = self_certainty_chunk
+    return self_certainty
 
 
 def masked_sum(values, mask, axis=None):

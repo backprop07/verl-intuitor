@@ -271,6 +271,31 @@ def compute_advantage(
         )
         data.batch["advantages"] = advantages
         data.batch["returns"] = returns
+    elif adv_estimator == AdvantageEstimator.INTUITOR:
+        self_certaintys = data.batch["self_certaintys"]
+        grpo_calculation_mask = data.batch["response_mask"]
+        
+        grpo_calculation_mask = grpo_calculation_mask.to(self_certaintys.dtype)
+
+        sentence_wise_mean = masked_mean(
+            self_certaintys.detach(), mask=grpo_calculation_mask, axis=-1
+        )
+
+        lengths = grpo_calculation_mask.sum(dim=-1).long()
+        eos_mask_id =  lengths - 1
+        token_level_rewards = torch.zeros_like(self_certaintys)
+        token_level_rewards.scatter_(
+            -1, eos_mask_id.unsqueeze(-1), sentence_wise_mean.unsqueeze(-1)
+        )
+
+        advantages, returns = core_algos.compute_grpo_outcome_advantage(
+            token_level_rewards=token_level_rewards,
+            response_mask=grpo_calculation_mask,
+            index=data.non_tensor_batch["uid"],
+            norm_adv_by_std_in_grpo=norm_adv_by_std_in_grpo,
+        )
+        data.batch["advantages"] = advantages
+        data.batch["returns"] = returns
     else:
         # handle all other adv estimator type other than GAE and GRPO
         adv_estimator_fn = core_algos.get_adv_estimator_fn(adv_estimator)
@@ -377,6 +402,7 @@ class RayPPOTrainer:
             AdvantageEstimator.OPO,
             AdvantageEstimator.REINFORCE_PLUS_PLUS_BASELINE,
             AdvantageEstimator.GPG,
+            AdvantageEstimator.INTUITOR,
         ]:
             self.use_critic = False
         else:

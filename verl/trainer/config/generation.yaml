@@ -46,6 +46,8 @@ actor:
   ulysses_sequence_parallel_size: 1 # sp size
   entropy_from_logits_with_chunking: False  # calculate entropy with chunking to reduce memory peak
   entropy_checkpointing: False  # recompute entropy
+  self_certainty_from_logits_with_chunking: False  # calculate self_certainty with chunking to reduce memory peak
+  self_certainty_checkpointing: False  # recompute self_certainty
   fsdp_config:
     fsdp_size: -1
     forward_prefetch: False  # FSDP1 forward_prefetch configuration
